@@ -43,3 +43,4 @@ def slic(sn, licNum):
 
 if __name__ == '__main__':
     #print(getSP('demo'))
+    pass
