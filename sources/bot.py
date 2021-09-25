@@ -1,5 +1,4 @@
 # from sources.telega import Settings
-import callUtils
 import requests
 import json
 from requests import HTTPError
@@ -68,43 +67,25 @@ class GrotemServerConnector(object):
         slic_uri = f'/system/solutions/setlicenses/{solution_name}/{lic_count}'
         return self._send_command(slic_uri)
 
-
     def reset_lic_count(self, solution_name: str):
-        return True
 
+        if solution_name is None:
+            raise ValueError('Solution Name required')
 
-def init():
-    if Settings != None:
-        callUtils.rootPassword = Settings['rootPassword']
-        callUtils.utilsPath = Settings['UtilsPath']
-        callUtils.bitmobileHost = Settings['bitmobileHost']
-
-def glic(sn, sp=None):
-    if sp == None:
-        sp = callUtils.getSP(sn)
-    if sp != None:
-        UtilsOutput = str(callUtils.getLics(sn, sp))        
-        if UtilsOutput.find('Invalid')==-1:
-            return UtilsOutput.replace("b'{", '').replace("}\\r\\n\'", '')        
+        lic_info = self.get_lic_info(solution_name)
+        if 'status' in lic_info:
+            if lic_info['status'] == 0:
+                _li = dict(lic_info['licenses'])
+                lic_count = _li.get('TotalLicenses')
+            else:
+                print('Error: Get lic_info => ' + str(lic_info['status']) + ' => ' + str(lic_info['details']))
+                return False
         else:
-            return "not found"
-    else:
-        return "not found"    
+            print(f'Error: Invalid lic_info: {lic_info}')
+            return False
 
-
-def slic(sn):
-    sp = callUtils.getSP(sn)
-    if sp != None:
-       UtilsOutput = str(callUtils.getLics(sn, sp))
-       if UtilsOutput.find('Invalid')==-1:
-            TotalLicenses = UtilsOutput.split(',')
-            licCount = int(TotalLicenses[0][TotalLicenses[0].find(":")+1:]) 
-            callUtils.slic(sn, licCount)
-            return glic(sn, sp)
-       else:
-            return "not found"
-    else:
-        return "not found"
-
- 
-       
+        res = self.set_lic_count(solution_name=solution_name, lic_count=lic_count)
+        if res == 'ok':
+            return True
+        else:
+            print('Error: Reset lic_count => ' + res)
