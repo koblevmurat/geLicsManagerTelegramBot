@@ -1,75 +1,123 @@
 # from os import read
-import sqlite3 
-from cryptography.fernet import Fernet
+import sqlite3
+import configparser
+import os
+# from cryptography.fernet import Fernet
 
 con = None
-isNewKey = False
+is_new_key = False
 
-def getEncryptionKey ():
-    keyFile = open("key.txt","a+")
-    keyFile.seek(0)
-    key = keyFile.readline().strip() #.strip().encode()
-    if not key:
-        key = Fernet.generate_key()
-        keyFile.flush()
-        keyFile.write(key.decode())
-        isNewKey = True
-    return key
 
-def ConnDB():       
+# def get_encryption_key():
+#     key_file = open("key.txt", "a+")
+#     key_file.seek(0)
+#     key = key_file.readline().strip()
+#     if not key:
+#         key = Fernet.generate_key()
+#         key_file.flush()
+#         key_file.write(key.decode())
+#         is_new_key = True
+#     return key
+
+
+def get_db_connection():
     conn = sqlite3.connect('settings.db')
     return conn
 
-def Disconnect(conn, Commit = True):
+
+def close_db_connection(conn, commit=True):
     conn.close()
 
-def requestSetting():
-    telegramBotToken = input("telegramBotToken: ")
-    UtilsPath = input("Utils file path: ").strip()
-    rootPassword = input("Root password: ").strip()
-    bitmobileHost = input("Bitmobile Host address: ").strip()
-    fern = Fernet(getEncryptionKey())
-    rootPassword = fern.encrypt(rootPassword.encode())
-    return {'telegramBotToken': telegramBotToken, 'UtilsPath': UtilsPath, 'rootPassword': rootPassword, 'bitmobileHost': bitmobileHost}
 
-def InitSettings(rewrite = False):
-    fern = Fernet(getEncryptionKey())   
-    rewrite = isNewKey 
-    isSet = False
-    conn = ConnDB()
-    cur = conn.cursor()        
-    cur.execute('''CREATE TABLE IF NOT EXISTS Settings 
-                    (telegramBotToken text,
-                    UtilsPath text, 
-                    rootPassword text,
-                    bitmobileHost)''')
-    for vals in cur.execute('SELECT * FROM Settings LIMIT 1'):
-        isSet = True        
-        Setting = {'telegramBotToken': vals[0], 'UtilsPath': vals[1], 'rootPassword': fern.decrypt(vals[2]).decode(), 'bitmobileHost':vals[3] }
+# def request_setting():
+#     telegram_bot_token = input("telegram_bot_token: ")
+#     utils_path = input("Utils file path: ").strip()
+#     root_password = input("Root password: ").strip()
+#     bitmobile_host = input("Bitmobile Host address: ").strip()
+#     fern = Fernet(get_encryption_key())
+#     root_password = fern.encrypt(root_password.encode())
+#     return {'telegram_bot_token': telegram_bot_token,
+#             'utils_path': utils_path,
+#             'root_password': root_password,
+#             'bitmobile_host': bitmobile_host}
 
-    if rewrite:
-        isSet = False
 
-    if not isSet:
-        Setting = requestSetting()
-        cur.execute('INSERT INTO Settings VALUES (:telegramBotToken, :UtilsPath, :rootPassword, :bitmobileHost)', Setting)
-        Setting['rootPassword'] = fern.decrypt(Setting['rootPassword']).decode()
-    conn.commit()
-    Disconnect(conn)
-    return Setting
-    
+# def init_settings(rewrite=False):
+#     fern = Fernet(get_encryption_key())
+#     rewrite = is_new_key
+#     is_set = False
+#     conn = get_db_connection()
+#     cur = conn.cursor()
+#     settings = None
+#
+#     cur.execute('''CREATE TABLE IF NOT EXISTS Settings
+#                     (telegramBotToken text,
+#                     UtilsPath text,
+#                     rootPassword text,
+#                     bitmobileHost)''')
+#     for values in cur.execute('SELECT * FROM Settings LIMIT 1'):
+#         is_set = True
+#         settings = {'telegram_bot_token': values[0],
+#                     'utils_path': values[1],
+#                     'root_password': fern.decrypt(values[2]).decode(),
+#                     'bitmobile_host': values[3]}
+#
+#     if rewrite:
+#         is_set = False
+#
+#     if not is_set:
+#         settings = request_setting()
+#         cur.execute('''INSERT INTO Settings
+#                         VALUES
+#                         (:telegramBotToken, :UtilsPath, :rootPassword, :bitmobileHost)''', settings)
+#         settings['rootPassword'] = fern.decrypt(settings['rootPassword']).decode()
+#     conn.commit()
+#     close_db_connection(conn)
+#     return settings
+#
 
-def testModule():    
+def test_module():
     # conn = ConnDB()
     # cur = conn.cursor()
     # cur.execute('''DROP TABLE Settings''')
     # conn.commit()
     # Disconnect(conn)
-    InitSettings(True)
+    # init_settings(True)
     # print(getEncryptionKey())
-
-if __name__ == '__main__':    
-    testModule()
+    pass
 
 
+def _load_settings_file():
+    f_settings = {}
+    working_directory = os.getcwd()
+    config_filename = os.path.join(working_directory, 'config.ini')
+    if os.path.exists(config_filename):
+        config = configparser.ConfigParser()
+        config.sections()
+        config.read(config_filename)
+        f_settings.update(config['TELEGRAM_BOT'])
+    return f_settings
 
+
+def _load_env_settings():
+    env_settings = {}
+    for env_item in [i for i in os.environ if i.startswith('TELEGRAM_BOT')]:
+        param_name = env_item.split('__')[1].lower().strip()
+        env_settings.update({param_name: os.environ[env_item]})
+    return env_settings
+
+
+def get_settings():
+    settings = {'telegram_bot_token': '',
+                'utils_path': '',
+                'root_password': '',
+                'bitmobile_host': ''}
+
+    settings.update(_load_settings_file())
+    settings.update(_load_env_settings())
+
+    return settings
+
+
+if __name__ == '__main__':
+    test_module()

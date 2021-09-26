@@ -1,0 +1,14 @@
+.git
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+/sources/config.ini
+/sources/key.txt
+/sources/settings.db
+/build.sh
+/development.env
+/run.sh
+**/.pytest_cache
