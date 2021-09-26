@@ -11,6 +11,16 @@ class GrotemServerConnector(object):
     def __init__(self, url='', password=''):
         self._server_url = url
         self._server_password = password
+        self.error_code = 0
+        self.error_description = ''
+        self.message = ''
+        self.data = None
+
+    def _init_error_info(self):
+        self.error_code = 0
+        self.error_description = ''
+        self.message = ''
+        self.data = None
 
     def _send_command(self, uri, **kwargs):
         url = self._server_url + uri
@@ -34,15 +44,21 @@ class GrotemServerConnector(object):
         return result
 
     def check_connection(self):
+        self._init_error_info()
         check_uri = '/system/version'
         response = self._send_command(check_uri)
         if '(ver ' in response:
-            return 0
+            self.error_code = 0
+            self.error_description = ''
+            self.data = response
+            return True
         else:
-            print(response)
-            return -1
+            self.error_code = -1
+            self.error_description = str(response)
+            return False
 
     def get_lic_info(self, solution_name: str):
+        self._init_error_info()
         if solution_name is None:
             raise ValueError('Solution Name required')
 
@@ -51,41 +67,67 @@ class GrotemServerConnector(object):
         result = self._send_command(glic_uri, auth_password=solution_password)
 
         if type(result) != str:
-            return {'status': 1, 'details': 'Get licenses error: '+str(result)}
+            self.error_code = 1
+            self.error_description = 'Get licenses error: '+str(result)
+            return False
 
         try:
             lic_info = json.loads(result)
         except Exception as e:
-            return {'status': 2, 'details': 'Get licenses error: ' + str(e)}
+            self.error_code = 2
+            self.error_description = 'Get licenses error: ' + str(e)
+            return False
 
-        return {'status': 0, 'details': '', 'licenses': lic_info}
+        self.error_code = 0
+        self.error_description = ''
+        self.data = lic_info
+        return True
 
     def set_lic_count(self, solution_name: str, lic_count: int):
+        self._init_error_info()
         if solution_name is None:
             raise ValueError('Solution Name required')
 
         slic_uri = f'/system/solutions/setlicenses/{solution_name}/{lic_count}'
-        return self._send_command(slic_uri)
+        result = self._send_command(slic_uri)
+        if result == 'ok':
+            self.error_code = 0
+            self.error_description = ''
+            self.data = 'ok'
+        else:
+            self.error_code = -1
+            self.error_description = str(result)
+            self.data = result
+
+        return self.error_code == 0
 
     def reset_lic_count(self, solution_name: str):
-
+        self._init_error_info()
         if solution_name is None:
             raise ValueError('Solution Name required')
 
-        lic_info = self.get_lic_info(solution_name)
-        if 'status' in lic_info:
-            if lic_info['status'] == 0:
-                _li = dict(lic_info['licenses'])
-                lic_count = _li.get('TotalLicenses')
+        try:
+            result = self.get_lic_info(solution_name)
+            if result:
+                lic_count = self.data['TotalLicenses']
             else:
-                print('Error: Get lic_info => ' + str(lic_info['status']) + ' => ' + str(lic_info['details']))
+                # Transfer error info from previous execution of self
+                print(self.error_description)
                 return False
-        else:
-            print(f'Error: Invalid lic_info: {lic_info}')
+        except Exception as e:
+            self.error_code = -1
+            self.error_description = f'Error: Invalid lic_info: {e}'
+            self.data = str(e)
+            print(self.error_description)
             return False
 
         res = self.set_lic_count(solution_name=solution_name, lic_count=lic_count)
-        if res == 'ok':
+        if res:
+            self.error_code = 0
+            self.error_description = ''
+            self.data = 'ok'
             return True
         else:
-            print('Error: Reset lic_count => ' + res)
+            # Transfer error info from previous execution of self
+            print(self.error_description)
+            return False
