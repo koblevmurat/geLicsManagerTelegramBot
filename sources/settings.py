@@ -3,60 +3,66 @@ import sqlite3
 from cryptography.fernet import Fernet
 
 con = None
-isNewKey = False
+is_new_key = False
 
-def getEncryptionKey ():
-    keyFile = open("key.txt","a+")
-    keyFile.seek(0)
-    key = keyFile.readline().strip() #.strip().encode()
+def get_encryption_key ():
+    key_file = open("key.txt", "a+")
+    key_file.seek(0)
+    key = key_file.readline().strip()
     if not key:
         key = Fernet.generate_key()
-        keyFile.flush()
-        keyFile.write(key.decode())
+        key_file.flush()
+        key_file.write(key.decode())
         isNewKey = True
     return key
 
-def ConnDB():       
+
+def get_db_connection():
     conn = sqlite3.connect('settings.db')
     return conn
 
-def Disconnect(conn, Commit = True):
+
+def close_db_connection(conn, commit=True):
     conn.close()
 
-def requestSetting():
-    telegramBotToken = input("telegramBotToken: ")
-    UtilsPath = input("Utils file path: ").strip()
-    rootPassword = input("Root password: ").strip()
-    bitmobileHost = input("Bitmobile Host address: ").strip()
-    fern = Fernet(getEncryptionKey())
-    rootPassword = fern.encrypt(rootPassword.encode())
-    return {'telegramBotToken': telegramBotToken, 'UtilsPath': UtilsPath, 'rootPassword': rootPassword, 'bitmobileHost': bitmobileHost}
 
-def InitSettings(rewrite = False):
-    fern = Fernet(getEncryptionKey())   
-    rewrite = isNewKey 
-    isSet = False
-    conn = ConnDB()
-    cur = conn.cursor()        
+def request_setting():
+    telegram_bot_token = input("telegram_bot_token: ")
+    utils_path = input("Utils file path: ").strip()
+    root_password = input("Root password: ").strip()
+    bitmobile_host = input("Bitmobile Host address: ").strip()
+    fern = Fernet(get_encryption_key())
+    root_password = fern.encrypt(root_password.encode())
+    return {'telegram_bot_token': telegram_bot_token, 'utils_path': utils_path, 'root_password': root_password, 'bitmobile_host': bitmobile_host}
+
+
+def init_settings(rewrite = False):
+    fern = Fernet(get_encryption_key())
+    rewrite = is_new_key
+    is_set = False
+    conn = get_db_connection()
+    cur = conn.cursor()
+    settings = None
+
     cur.execute('''CREATE TABLE IF NOT EXISTS Settings 
                     (telegramBotToken text,
                     UtilsPath text, 
                     rootPassword text,
                     bitmobileHost)''')
-    for vals in cur.execute('SELECT * FROM Settings LIMIT 1'):
-        isSet = True        
-        Setting = {'telegramBotToken': vals[0], 'UtilsPath': vals[1], 'rootPassword': fern.decrypt(vals[2]).decode(), 'bitmobileHost':vals[3] }
+    for values in cur.execute('SELECT * FROM Settings LIMIT 1'):
+        is_set = True
+        settings = {'telegramBotToken': values[0], 'UtilsPath': values[1], 'rootPassword': fern.decrypt(values[2]).decode(), 'bitmobileHost':values[3] }
 
     if rewrite:
-        isSet = False
+        is_set = False
 
-    if not isSet:
-        Setting = requestSetting()
-        cur.execute('INSERT INTO Settings VALUES (:telegramBotToken, :UtilsPath, :rootPassword, :bitmobileHost)', Setting)
-        Setting['rootPassword'] = fern.decrypt(Setting['rootPassword']).decode()
+    if not is_set:
+        settings = request_setting()
+        cur.execute('INSERT INTO Settings VALUES (:telegramBotToken, :UtilsPath, :rootPassword, :bitmobileHost)', settings)
+        settings['rootPassword'] = fern.decrypt(settings['rootPassword']).decode()
     conn.commit()
-    Disconnect(conn)
-    return Setting
+    close_db_connection(conn)
+    return settings
     
 
 def testModule():    
@@ -65,10 +71,11 @@ def testModule():
     # cur.execute('''DROP TABLE Settings''')
     # conn.commit()
     # Disconnect(conn)
-    InitSettings(True)
+    init_settings(True)
     # print(getEncryptionKey())
 
-if __name__ == '__main__':    
+
+if __name__ == '__main__':
     testModule()
 
 

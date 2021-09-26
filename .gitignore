@@ -362,4 +362,9 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# End of https://www.toptal.com/developers/gitignore/api/python,pycharm,pycharm+iml,intellij+all
+# End of https://www.toptal.com/developers/gitignore/api/python,pycharm,pycharm+iml,intellij+all!/sources/key.txt
+/sources/settings.db
+/sources/key.txt
+
+/sources/config.ini
+/sources/development.env

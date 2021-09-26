@@ -1,33 +1,54 @@
 import telegram
-import bot
-
-from settings import InitSettings
-Settings = InitSettings()
-bot.Settings = Settings
-bot.init()
-
+import logging
+from bot import GrotemServerConnector
+from settings import init_settings
 from telegram.ext import Updater
-updater = Updater(token=Settings['telegramBotToken'], use_context=True)
-dispatcher = updater.dispatcher
+from telegram.ext import CommandHandler
+from telegram.ext import MessageHandler, Filters
+
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+
 def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Использование: <Название решения>, [сброс]")
 
-from telegram.ext import CommandHandler
-start_handler = CommandHandler('start', start)
-dispatcher.add_handler(start_handler)
-updater.start_polling()
 
 def echo(update, context):
-    isSlic = str(update.message.text).strip().lower().find("сброс")>=0
+    # isSlic = str(update.message.text).strip().lower().find("сброс") >= 0
     sn = str(update.message.text).strip().split(' ')[0]
-    result = 'not found'
-    if isSlic:
-        result = bot.slic(sn)
+    if 'сброс' in str(update.message.text).lower():
+        # result = bot.slic(sn)
+        result = bot.reset_lic_count(solution_name=sn)
+        response_text = f'{result["data"]}'
     else:
-        result = bot.glic(sn)
-    context.bot.send_message(chat_id=update.effective_chat.id, text=result)
+        result = bot.get_lic_info(solution_name=sn)
+        # TODO: add response text
+        response_text = f'{result["data"]}'
 
-from telegram.ext import MessageHandler, Filters
-echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
-dispatcher.add_handler(echo_handler)
- 
+    context.bot.send_message(chat_id=update.effective_chat.id, text=response_text)
+
+
+def main():
+    settings = init_settings()
+    # bot.settings = settings
+    # bot.init()
+    bot = GrotemServerConnector(settings['bitmobile_host'], settings['root_password'])
+    if not bot.check_connection():
+        raise ConnectionError(f'Unable connect to Bitmobile server {settings["bitmobile_host"]}')
+    updater = Updater(token=settings['telegram_bot_token'], use_context=True)
+    dispatcher = updater.dispatcher
+
+    start_handler = CommandHandler('start', start)
+    dispatcher.add_handler(start_handler)
+
+    echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
+    dispatcher.add_handler(echo_handler)
+
+    updater.start_polling()
+
+
+if __name__ == '__main__':
+    main()
+
