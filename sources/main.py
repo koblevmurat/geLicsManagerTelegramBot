@@ -1,7 +1,7 @@
 import telegram
 import logging
 from bot import GrotemServerConnector
-from settings import init_settings
+from settings import init_settings, get_settings
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler, Filters
@@ -18,26 +18,36 @@ def start(update, context):
 def echo(update, context):
     # isSlic = str(update.message.text).strip().lower().find("сброс") >= 0
     sn = str(update.message.text).strip().split(' ')[0]
+    bot_settings = get_settings()
+    bot = GrotemServerConnector(bot_settings['bitmobile_host'], bot_settings['root_password'])
     if 'сброс' in str(update.message.text).lower():
         # result = bot.slic(sn)
         result = bot.reset_lic_count(solution_name=sn)
-        response_text = f'{result["data"]}'
+        if not result:
+            response_text = f"Couldn't reset lics for solution {sn}: {bot.error_description}"
+        else:
+            response_text = f'Reset lics for solution {sn}: {bot.data}'
+            result = bot.get_lic_info(solution_name=sn)
+            if not result:
+                response_text += f"\r\nCouldn't check lics after update for solution {sn}: {bot.error_description}"
+            else:
+                response_text += f" \r\nLics after reset: {bot.data}"
     else:
         result = bot.get_lic_info(solution_name=sn)
-        # TODO: add response text
-        response_text = f'{result["data"]}'
+        response_text = f'{bot.data}'
 
     context.bot.send_message(chat_id=update.effective_chat.id, text=response_text)
 
 
 def main():
-    settings = init_settings()
+    # settings = init_settings()
     # bot.settings = settings
     # bot.init()
-    bot = GrotemServerConnector(settings['bitmobile_host'], settings['root_password'])
+    bot_settings = get_settings()
+    bot = GrotemServerConnector(bot_settings['bitmobile_host'], bot_settings['root_password'])
     if not bot.check_connection():
-        raise ConnectionError(f'Unable connect to Bitmobile server {settings["bitmobile_host"]}')
-    updater = Updater(token=settings['telegram_bot_token'], use_context=True)
+        raise ConnectionError(f'Unable connect to Bitmobile server {bot_settings["bitmobile_host"]}')
+    updater = Updater(token=bot_settings['telegram_bot_token'], use_context=True)
     dispatcher = updater.dispatcher
 
     start_handler = CommandHandler('start', start)

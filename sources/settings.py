@@ -1,9 +1,12 @@
 # from os import read
-import sqlite3 
+import sqlite3
+import configparser
+import os
 from cryptography.fernet import Fernet
 
 con = None
 is_new_key = False
+
 
 def get_encryption_key ():
     key_file = open("key.txt", "a+")
@@ -33,7 +36,10 @@ def request_setting():
     bitmobile_host = input("Bitmobile Host address: ").strip()
     fern = Fernet(get_encryption_key())
     root_password = fern.encrypt(root_password.encode())
-    return {'telegram_bot_token': telegram_bot_token, 'utils_path': utils_path, 'root_password': root_password, 'bitmobile_host': bitmobile_host}
+    return {'telegram_bot_token': telegram_bot_token,
+            'utils_path': utils_path,
+            'root_password': root_password,
+            'bitmobile_host': bitmobile_host}
 
 
 def init_settings(rewrite = False):
@@ -51,7 +57,10 @@ def init_settings(rewrite = False):
                     bitmobileHost)''')
     for values in cur.execute('SELECT * FROM Settings LIMIT 1'):
         is_set = True
-        settings = {'telegramBotToken': values[0], 'UtilsPath': values[1], 'rootPassword': fern.decrypt(values[2]).decode(), 'bitmobileHost':values[3] }
+        settings = {'telegram_bot_token': values[0],
+                    'utils_path': values[1],
+                    'root_password': fern.decrypt(values[2]).decode(),
+                    'bitmobile_host': values[3]}
 
     if rewrite:
         is_set = False
@@ -65,7 +74,7 @@ def init_settings(rewrite = False):
     return settings
     
 
-def testModule():    
+def test_module():
     # conn = ConnDB()
     # cur = conn.cursor()
     # cur.execute('''DROP TABLE Settings''')
@@ -75,8 +84,38 @@ def testModule():
     # print(getEncryptionKey())
 
 
+def _load_settings_file():
+    f_settings = {}
+    working_directory = os.getcwd()
+    config = configparser.ConfigParser()
+    config.sections()
+    config.read(os.path.join(working_directory, 'config.ini'))
+    f_settings.update(config['TELEGRAM_BOT'])
+    return f_settings
+
+
+def _load_env_settings():
+    env_settings = {}
+    for env_item in [i for i in os.environ if i.startswith('TELEGRAM_BOT')]:
+        param_name = env_item.split('__')[1].lower().strip()
+        env_settings.update({param_name: os.environ[env_item]})
+    return env_settings
+
+
+def get_settings():
+    settings = {'telegram_bot_token': '',
+                'utils_path': '',
+                'root_password': '',
+                'bitmobile_host': ''}
+
+    settings.update(_load_settings_file())
+    settings.update(_load_env_settings())
+
+    return settings
+
+
 if __name__ == '__main__':
-    testModule()
+    test_module()
 
 
 
