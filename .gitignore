@@ -367,4 +367,7 @@ cython_debug/
 /sources/key.txt
 
 /sources/config.ini
-/sources/development.env
+/development.env
+/docker_run.sh
+/build.sh
+/run.sh
