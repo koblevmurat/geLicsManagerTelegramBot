@@ -8,7 +8,7 @@ con = None
 is_new_key = False
 
 
-def get_encryption_key ():
+def get_encryption_key():
     key_file = open("key.txt", "a+")
     key_file.seek(0)
     key = key_file.readline().strip()
@@ -16,7 +16,7 @@ def get_encryption_key ():
         key = Fernet.generate_key()
         key_file.flush()
         key_file.write(key.decode())
-        isNewKey = True
+        is_new_key = True
     return key
 
 
@@ -42,7 +42,7 @@ def request_setting():
             'bitmobile_host': bitmobile_host}
 
 
-def init_settings(rewrite = False):
+def init_settings(rewrite=False):
     fern = Fernet(get_encryption_key())
     rewrite = is_new_key
     is_set = False
@@ -67,7 +67,9 @@ def init_settings(rewrite = False):
 
     if not is_set:
         settings = request_setting()
-        cur.execute('INSERT INTO Settings VALUES (:telegramBotToken, :UtilsPath, :rootPassword, :bitmobileHost)', settings)
+        cur.execute('''INSERT INTO Settings 
+                        VALUES 
+                        (:telegramBotToken, :UtilsPath, :rootPassword, :bitmobileHost)''', settings)
         settings['rootPassword'] = fern.decrypt(settings['rootPassword']).decode()
     conn.commit()
     close_db_connection(conn)
@@ -116,6 +118,3 @@ def get_settings():
 
 if __name__ == '__main__':
     test_module()
-
-
-

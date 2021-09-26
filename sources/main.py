@@ -1,7 +1,6 @@
-import telegram
 import logging
 from bot import GrotemServerConnector
-from settings import init_settings, get_settings
+from settings import get_settings
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler, Filters
@@ -16,7 +15,7 @@ def start(update, context):
 
 
 def echo(update, context):
-    # isSlic = str(update.message.text).strip().lower().find("сброс") >= 0
+    # is_set_lic = str(update.message.text).strip().lower().find("сброс") >= 0
     sn = str(update.message.text).strip().split(' ')[0]
     bot_settings = get_settings()
     bot = GrotemServerConnector(bot_settings['bitmobile_host'], bot_settings['root_password'])
@@ -24,16 +23,16 @@ def echo(update, context):
         # result = bot.slic(sn)
         result = bot.reset_lic_count(solution_name=sn)
         if not result:
-            response_text = f"Couldn't reset lics for solution {sn}: {bot.error_description}"
+            response_text = f"Couldn't reset licences for solution {sn}: {bot.error_description}"
         else:
-            response_text = f'Reset lics for solution {sn}: {bot.data}'
+            response_text = f'Reset licences for solution {sn}: {bot.data}'
             result = bot.get_lic_info(solution_name=sn)
             if not result:
-                response_text += f"\r\nCouldn't check lics after update for solution {sn}: {bot.error_description}"
+                response_text += f"\r\nCouldn't check licences after update for solution {sn}: {bot.error_description}"
             else:
-                response_text += f" \r\nLics after reset: {bot.data}"
+                response_text += f" \r\nLicences after reset: {bot.data}"
     else:
-        result = bot.get_lic_info(solution_name=sn)
+        _ = bot.get_lic_info(solution_name=sn)
         response_text = f'{bot.data}'
 
     context.bot.send_message(chat_id=update.effective_chat.id, text=response_text)
@@ -61,4 +60,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -1,4 +1,4 @@
-# from sources.telega import Settings
+# from sources.main import Settings
 import requests
 import json
 from requests import HTTPError
